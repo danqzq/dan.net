@@ -1,0 +1,11 @@
+{
+  "name": "com.danqzq.net",
+  "version": "1.0.0",
+  "displayName": "Dan.Net",
+  "description": "Custom networking stack for Unity games operating over WebSockets. Check out the demo usage here: https://net.danqzq.games",
+  "unity": "2022.3",
+  "author": {
+    "name": "Danial Jumagaliyev",
+    "url": "https://github.com/danqzq"
+  }
+}

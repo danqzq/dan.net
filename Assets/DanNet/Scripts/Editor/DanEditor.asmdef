@@ -1,0 +1,18 @@
+{
+    "name": "DanEditor",
+    "rootNamespace": "DanEditor",
+    "references": [
+        "GUID:395d942501298fa49861b049400616d2"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
