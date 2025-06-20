@@ -17,9 +17,7 @@ is inspired by the popular Photon Unity Networking (PUN) package.
 - **Cross-Platform**: Dan.Net is built on WebSockets, allowing for cross-platform compatibility.
 - **Open Source**: Dan.Net is open source, allowing for easy modification and integration into your game.
 
-## Installation
-
-`TODO: Add installation instructions`
+## Installatio
 
 To install Dan.Net, simply download the latest release from the [releases page]()
 
