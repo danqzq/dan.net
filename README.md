@@ -2,6 +2,8 @@
 
 ## Preview
 
+https://github.com/user-attachments/assets/496c2715-a3c1-45c6-a524-387b1f41c71c
+
 ## Overview
 
 Dan.Net is a simple online multiplayer networking solution running on WebSockets, designed for Unity games. Its structure
