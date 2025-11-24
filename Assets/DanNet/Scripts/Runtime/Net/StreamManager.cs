@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Dan.Net
 {
@@ -23,13 +22,16 @@ namespace Dan.Net
         {
             foreach (var syncObject in SyncObjectManager.GetForeignSyncObjects())
             {
-                if (!stream.data.ContainsKey(syncObject.ID))
+                if (!stream.transformData.ContainsKey(syncObject.ID))
                 {
                     continue;
                 }
+                
                 stream.ViewingId = syncObject.ID;
-                if (syncObject.TryGetComponent<ISyncData>(out var syncData)) 
+                if (syncObject.TryGetComponent<ISyncData>(out var syncData))
+                {
                     syncData.OnDataRead(in stream);
+                }
             }
         }
 
@@ -41,10 +43,12 @@ namespace Dan.Net
             {
                 stream.SendingId = syncObject.ID;
                 if (syncObject.TryGetComponent<ISyncData>(out var syncData)) 
+                {
                     syncData.OnDataSend(in stream);
+                }
             }
 
-            if (DanNet.IsStreamEnabled)
+            if (DanNet.IsStreamEnabled && stream.transformData.Count > 0)
             {
                 DanNet.SendStream(stream);
             }

@@ -59,20 +59,20 @@ namespace Dan.Net
         
         #region Event Types
 
-        internal const string JOINED_ROOM_EVENT_TYPE  = "joined_room";
-        internal const string UPDATE_ROOM_EVENT_TYPE  = "update_room";
-        internal const string LEFT_ROOM_EVENT_TYPE    = "left_room";
-        internal const string SYNC_OBJECTS_EVENT_TYPE = "sync_objects";
-        internal const string STREAM_EVENT_TYPE       = "stream";
-        internal const string INSTANTIATE_EVENT_TYPE  = "instantiate";
-        internal const string DESTROY_EVENT_TYPE      = "destroy";
+        internal const byte JOINED_ROOM_EVENT_TYPE  = 0x01;
+        internal const byte UPDATE_ROOM_EVENT_TYPE  = 0x02;
+        internal const byte LEFT_ROOM_EVENT_TYPE    = 0x03;
+        internal const byte SYNC_OBJECTS_EVENT_TYPE = 0x04;
+        internal const byte STREAM_EVENT_TYPE       = 0x05;
+        internal const byte INSTANTIATE_EVENT_TYPE  = 0x06;
+        internal const byte DESTROY_EVENT_TYPE      = 0x07;
         
-        internal const string PING_EVENT_TYPE = "ping";
-        internal const string PONG_EVENT_TYPE = "pong";
+        internal const byte PING_EVENT_TYPE = 0x08;
+        internal const byte PONG_EVENT_TYPE = 0x09;
         
-        internal const string DAN_NET_EVENT_TYPE_NORMAL      = "event_normal";
-        internal const string DAN_NET_EVENT_TYPE_SERVER_SYNC = "event_server_sync";
-        internal const string DAN_NET_EVENT_TYPE_BUFFERED    = "event_buffered";
+        internal const byte DAN_NET_EVENT_TYPE_NORMAL      = 0x0A;
+        internal const byte DAN_NET_EVENT_TYPE_SERVER_SYNC = 0x0B;
+        internal const byte DAN_NET_EVENT_TYPE_BUFFERED    = 0x0C;
         
         #endregion
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using UnityEngine;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace Dan.Net
@@ -9,10 +10,8 @@ namespace Dan.Net
     [System.Serializable]
     public sealed class SyncDataStream
     {
-        [JsonProperty] internal Dictionary<int, List<object>> data = new Dictionary<int, List<object>>();
+        [JsonProperty] internal Dictionary<int, TransformData> transformData = new Dictionary<int, TransformData>();
         [JsonProperty] internal double serverSentTime;
-        
-        [JsonProperty] internal string __time__ = "DL_SERVER_SENT_TIME";
         
         /// <summary>
         /// The ID of the object that is receiving the data.
@@ -24,28 +23,62 @@ namespace Dan.Net
         /// </summary>
         public int SendingId { private get; set; }
 
-        public void Send(object obj)
+        /// <summary>
+        /// Sends transform data for the current object
+        /// </summary>
+        public void SendTransform(Vector3? position, Quaternion? rotation)
         {
-            if (data.ContainsKey(SendingId))
+            if (!transformData.ContainsKey(SendingId))
             {
-                data[SendingId].Add(obj);
-            }
-            else
-            {
-                data.Add(SendingId, new List<object>{obj});
-            }
-        }
-        
-        public object Receive()
-        {
-            if (data.Count == 0 || !data.TryGetValue(ViewingId, out var value))
-            {
-                return default;
+                transformData[SendingId] = new TransformData();
             }
             
-            var obj = value[0];
-            data[ViewingId].RemoveAt(0);
-            return obj;
+            var data = transformData[SendingId];
+            data.hasPosition = position.HasValue;
+            data.hasRotation = rotation.HasValue;
+            data.position = position ?? Vector3.zero;
+            data.rotation = rotation ?? Quaternion.identity;
+            transformData[SendingId] = data;
+        }
+        
+        /// <summary>
+        /// Sends custom data for the current object
+        /// </summary>
+        public void Send(byte[] customData)
+        {
+            if (!transformData.ContainsKey(SendingId))
+            {
+                transformData[SendingId] = new TransformData();
+            }
+            
+            var data = transformData[SendingId];
+            data.hasCustomData = true;
+            data.customData = customData;
+            transformData[SendingId] = data;
+        }
+        
+        /// <summary>
+        /// Receives transform data for the viewing object
+        /// </summary>
+        public TransformData ReceiveTransform()
+        {
+            if (transformData.TryGetValue(ViewingId, out var data))
+            {
+                return data;
+            }
+            return default;
+        }
+        
+        /// <summary>
+        /// Receives custom data for the viewing object
+        /// </summary>
+        public byte[] Receive()
+        {
+            if (transformData.TryGetValue(ViewingId, out var data) && data.hasCustomData)
+            {
+                return data.customData;
+            }
+            return null;
         }
     }
 }

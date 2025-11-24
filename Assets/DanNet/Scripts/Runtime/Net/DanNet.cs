@@ -74,17 +74,12 @@ namespace Dan.Net
         {
             FloatParseHandling = FloatParseHandling.Double
         };
-        
-        private static List<string> _messageBatch = new List<string>();
-        private static uint _currentMessageBatchSize;
-        private const uint MAX_MESSAGE_BATCH_SIZE = 512;
-        private const float BATCH_INTERVAL = 0.05f;
 
         private static Dictionary<string, System.Action<SyncObject, DanNetEvent>> _danNetEventHandlers;
         private static Dictionary<string, GameObject> _prefabCache;
         
-        private static IReadOnlyDictionary<string, System.Action<string>> _messageHandlers = 
-            new Dictionary<string, System.Action<string>>
+        private static IReadOnlyDictionary<byte, System.Action<string>> _messageHandlers = 
+            new Dictionary<byte, System.Action<string>>
         {
             { STREAM_EVENT_TYPE,              OnStreamMessage },
             { INSTANTIATE_EVENT_TYPE,         OnInstantiateMessage },
@@ -236,7 +231,6 @@ namespace Dan.Net
             
             void AttemptConnection(int retriesLeft)
             {
-                MainThreadManager.RunRepeated(BatchSendMessages, BATCH_INTERVAL);
                 _webSocket = WebSocketFactory.CreateInstance(GetWebsocketUrl(Route.JoinRoom,
                     (ROUTE_JOIN_ROOM_ROOM_NAME, roomName),
                     (ROUTE_JOIN_ROOM_PLAYER_ID, PlayerID)));
@@ -279,7 +273,6 @@ namespace Dan.Net
                     return;
                 }
                 
-                // If no room with the given name exists, create one.
                 if (rooms.All(r => r.name != roomName))
                 {
                     CreateRoom(roomName, maxPlayers);
@@ -364,7 +357,16 @@ namespace Dan.Net
 
         internal static void SendStream(SyncDataStream stream)
         {
-            SendMessage(new Message(STREAM_EVENT_TYPE, stream));
+            var binaryStreamData = BinaryStreamProtocol.EncodeStream(stream.transformData);
+            
+            // NOTE: serverSentTime is set to 0 here, the server will replace it with actual timestamp
+            var wrapper = new StreamWrapper
+            { 
+                serverSentTime = 0.0,
+                binaryData = System.Convert.ToBase64String(binaryStreamData)
+            };
+            
+            SendMessage(new Message(STREAM_EVENT_TYPE, wrapper));
         }
 
         private static void OnApplicationQuit()
@@ -374,12 +376,7 @@ namespace Dan.Net
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode loadMode)
         {
-            if (!IsConnected)
-            {
-                return;
-            }
-            
-            if (loadMode == LoadSceneMode.Additive || !IsMasterClient)
+            if (!IsConnected || loadMode == LoadSceneMode.Additive || !IsMasterClient)
             {
                 return;
             }
@@ -391,8 +388,7 @@ namespace Dan.Net
             var syncObjectData = syncObjectsOfCreator.Select(syncObject =>
                 new SyncObjectData(syncObject.ID, syncObject.creatorID)).ToList();
             
-            var data = Serialize(new Message(SYNC_OBJECTS_EVENT_TYPE, syncObjectData));
-            SendMessageExplicit(Encoding.UTF8.GetBytes(data));
+            SendMessage(new Message(SYNC_OBJECTS_EVENT_TYPE, syncObjectData));
         }
         
         private static void InitializePrefabCache()
@@ -412,68 +408,34 @@ namespace Dan.Net
         
         private static void SendMessageExplicit(byte[] data)
         {
+            if (_webSocket == null || _webSocket.GetState() != WebSocketState.Open)
+            {
+                Debug.LogWarning("WebSocket is not connected. Message not sent.");
+                return;
+            }
             _webSocket.Send(data);
         }
 
         private static void SendMessage(Message message)
         {
-            if (message.type == STREAM_EVENT_TYPE)
-            {
-                SendMessageExplicit(Encoding.UTF8.GetBytes(Serialize(message)));
-                return;
-            }
-            
-            lock (_messageBatch)
-            {
-                var size = Encoding.UTF8.GetByteCount(Serialize(message));
-                _currentMessageBatchSize += (uint) size;
-                if (_currentMessageBatchSize > MAX_MESSAGE_BATCH_SIZE)
-                {
-                    BatchSendMessages();
-                    _currentMessageBatchSize = 0;
-                }
-                _messageBatch.Add(Serialize(message));
-            }
-        }
-        
-        private static void BatchSendMessages()
-        {
-            byte[] batched;
-            lock (_messageBatch)
-            {
-                if (_messageBatch.Count == 0 || _webSocket == null)
-                    return;
-                batched = Encoding.UTF8.GetBytes(string.Join("\n", _messageBatch));
-            }
-
-            _webSocket.Send(batched);
-            _messageBatch.Clear();
+            var jsonPayload = Serialize(message.data);
+            var binaryData = BinaryProtocol.Encode(message.type, jsonPayload);
+            SendMessageExplicit(binaryData);
         }
 
         [ExternalThreadEvent]
         private static void OnWebSocketMessage(byte[] data)
         {
-            var str = Encoding.UTF8.GetString(data);
-            var messages = str.Split('\n');
+            var (messageType, jsonPayload) = BinaryProtocol.Decode(data);
+            Log($"Received: Type=0x{messageType:X2}, Payload={jsonPayload}");
             
-            Log(str);
-
-            foreach (var msg in messages)
-            {
-                var message = Deserialize<Message>(msg);
-                if (message is null)
-                {
-                    return;
-                }
-
-                var messageData = Serialize(message.data);
-                MainThreadManager.Run(() => HandleMessageUpdate(message, messageData), MainThreadManager.UpdateType.Update);
-            }
+            MainThreadManager.Run(() =>
+                HandleMessageUpdate(messageType, jsonPayload), MainThreadManager.UpdateType.Update);
         }
         
-        private static void HandleMessageUpdate(Message message, string data)
+        private static void HandleMessageUpdate(byte messageType, string data)
         {
-            if (_messageHandlers.TryGetValue(message.type, out var handler))
+            if (_messageHandlers.TryGetValue(messageType, out var handler))
             {
                 handler.Invoke(data);
             }
@@ -507,7 +469,7 @@ namespace Dan.Net
             }
 
             var sender = SyncObjectManager.GetSyncObjectByID(danNetEvent.senderId);
-            if (sender is null)
+            if (sender == null)
             {
                 Logger.Log("No sync object found with ID " + danNetEvent.senderId, Logger.LogType.Error);
                 return;
@@ -596,18 +558,37 @@ namespace Dan.Net
             }
         }
 
+        [System.Serializable]
+        private class StreamWrapper
+        {
+            [JsonProperty("serverSentTime")]
+            public double serverSentTime;
+            
+            [JsonProperty("binaryData")]
+            public string binaryData;
+        }
+
         private static void OnStreamMessage(string data)
         {
-            var stream = Deserialize<SyncDataStream>(data);
+            var wrapper = JsonConvert.DeserializeObject<StreamWrapper>(data);
+            var binaryData = System.Convert.FromBase64String(wrapper.binaryData);
+            
+            var stream = new SyncDataStream
+            {
+                serverSentTime = wrapper.serverSentTime,
+                transformData = BinaryStreamProtocol.DecodeStream(binaryData)
+            };
+            
             if (IsStreamEnabled)
             {
                 StreamManager.ReceiveStream(stream);
             }
             
+            var unixNano = (System.DateTime.UtcNow - new System.DateTime(1970, 1, 1)).TotalMilliseconds;
             SendMessage(new Message(PING_EVENT_TYPE, new LatencyResponse
             {
-                serverTime = stream!.serverSentTime,
-                clientTime = ClientTime.Get()
+                serverTime = stream.serverSentTime,
+                clientTime = unixNano
             }));
         }
         

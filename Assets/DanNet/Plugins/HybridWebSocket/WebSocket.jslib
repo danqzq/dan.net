@@ -263,7 +263,7 @@ var LibraryWebSocket = {
 	 * @param bufferPtr Pointer to the message buffer
 	 * @param length Length of the message in the buffer
 	 */
-	WebSocketSend: function(instanceId, bufferPtr, length) {
+	WebSocketSend: function(instanceId, bufferPtr, length) {
 	
 		var instance = webSocketState.instances[instanceId];
 		if (!instance) return -1;
@@ -274,7 +274,11 @@ var LibraryWebSocket = {
 		if (instance.ws.readyState !== 1)
 			return -6;
 
-		instance.ws.send(HEAPU8.buffer.slice(bufferPtr, bufferPtr + length));
+		// Create a proper copy of the data to send
+		// We need to copy the data into a new buffer to avoid issues with the Emscripten heap
+		var dataToSend = new Uint8Array(length);
+		dataToSend.set(HEAPU8.subarray(bufferPtr, bufferPtr + length));
+		instance.ws.send(dataToSend.buffer);
 
 		return 0;
 

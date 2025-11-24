@@ -3,11 +3,13 @@
 `Dan.Net` is a simple online multiplayer networking solution running on WebSockets, designed for Unity games. Its structure
 is inspired by the popular `Photon Unity Networking (PUN)` package.
 
+Latest Version: v1.1
+
 ---
 
 https://github.com/user-attachments/assets/496c2715-a3c1-45c6-a524-387b1f41c71c
 
-Try out the example for yourself [here](https://net.danqzq.games)
+Try out the example for yourself [here](https://www.danqzq.games)
 
 ## Features
 
@@ -25,11 +27,11 @@ Try out the example for yourself [here](https://net.danqzq.games)
 
 ## Installation
 
-To install `Dan.Net`, simply download the latest release from the [releases page]()
+To install `Dan.Net`, simply download the latest release from the [Releases page](https://github.com/danqzq/dan.net/releases)
 
 ## Usage
 
-For `Dan.Net` to work, you need to have a server running the `Dan.Net` server software. You can find the server software in the [Dan.Net Server Download Link](https://www.danqzq.games/dan-net-server.exe).
+For `Dan.Net` to work, you need to have a server running the `Dan.Net` server software. You can find the server software in the [Dan.Net Server Download Link](https://www.danqzq.games/dan-net-server.exe) or the [Releases page](https://github.com/danqzq/dan.net/releases).
 The server listens on port '3000'.
 The performance of `Dan.Net` is dependent on the performance of the server, so make sure to scale your server according to your needs.
 
@@ -86,16 +88,16 @@ There are several ways to use to approach networking with **`Dan.Net`**:
 `Dan.Net` provides an event-based networking system, allowing you to easily send and receive messages between clients.
 `Dan.Net` events can be sent immediately, buffered, or synchronized across all clients.
 
-To emit any kind of event, you must have a script component which derives from [`MonoBehaviourDanNet`](Assets/DanNet/Scripts/Runtime/Net/MonoBehaviourDanNet.cs)
+To emit any kind of event, you must have a script component which derives from [`MonoBehaviourDanNet`](Docs/MonoBehaviourDanNet.md)
 
 This kind of networking approach is suitable for turn-based games, where delays in sending and receiving messages are acceptable.
 
 ### Stream-based Networking
 
-`Dan.Net` also provides a stream-based networking system, for real-time data transfer between clients.
+`Dan.Net` also provides a stream-based networking system, for real-time data transfer between clients, operating over a binary stream protocol.
 
-To use the stream-based networking system, you must have a script component which derives from [`MonoBehaviourDanNet`](Assets/DanNet/Scripts/Runtime/Net/MonoBehaviourDanNet.cs) and
-implements the [`ISyncData`](Assets/DanNet/Scripts/Runtime/Net/ISyncData.cs) interface.
+To use the stream-based networking system, you must have a script component which derives from [`MonoBehaviourDanNet`](Docs/MonoBehaviourDanNet.md) and
+implements the [`ISyncData`](Docs/ISyncData.md) interface.
 
 This kind of networking approach is suitable for real-time games, where synchronization across all clients is important.
 However, it is more network-intensive than the event-based networking system.
@@ -107,23 +109,23 @@ events and streams for maximum flexibility.
 
 ## Classes and Components
 
-For a deeper dive into the classes and components of `Dan.Net`, refer to the files below:
+For a deeper dive into the classes and components of `Dan.Net`, refer to the Docs below:
 - Main Components
-  - [`DanNet (Main Class)`](Assets/DanNet/Scripts/Runtime/Net/DanNet.cs)
-  - [`Room`](Assets/DanNet/Scripts/Runtime/Net/Models/Room.cs)
-  - [`SyncObject`](Assets/DanNet/Scripts/Runtime/Net/SyncObject.cs)
-  - [`MonoBehaviourDanNet`](Assets/DanNet/Scripts/Runtime/Net/MonoBehaviourDanNet.cs)
-  - [`MonoBehaviourDanNetCallbacks`](Assets/DanNet/Scripts/Runtime/Net/MonoBehaviourDanNetCallbacks.cs)
-  - [`DanNetEvent`](Assets/DanNet/Scripts/Runtime/Net/DanNetEvent.cs)
+  - [`DanNet (Main Class)`](Docs/DanNet.md)
+  - [`Room`](Docs/Room.md)
+  - [`SyncObject`](Docs/SyncObject.md)
+  - [`MonoBehaviourDanNet`](Docs/MonoBehaviourDanNet.md)
+  - [`MonoBehaviourDanNetCallbacks`](Docs/MonoBehaviourDanNetCallbacks.md)
+  - [`DanNetEvent`](Docs/DanNetEvent.md)
 - Stream-based Networking
-  - [`ISyncData`](Assets/DanNet/Scripts/Runtime/Net/ISyncData.cs)
-  - [`SyncDataStream`](Assets/DanNet/Scripts/Runtime/Net/SyncDataStream.cs)
-  - [`TransformSync`](Assets/DanNet/Scripts/Runtime/Net/TransformSync.cs)
+  - [`ISyncData`](Docs/ISyncData.md)
+  - [`SyncDataStream`](Docs/SyncDataStream.md)
+  - [`TransformSync`](Docs/TransformSync.md)
 - Configuration
-  - [`DanNetConfig`](Assets/DanNet/Scripts/Runtime/Net/DanNetConfig.cs)
+  - [`DanNetConfig`](Docs/DanNetConfig.md)
 - Internal Classes
-  - [`StreamManager`](Assets/DanNet/Scripts/Runtime/Net/StreamManager.cs)
-  - [`SyncObjectManager`](Assets/DanNet/Scripts/Runtime/Net/SyncObjectManager.cs)
+  - [`StreamManager`](Docs/StreamManager.md)
+  - [`SyncObjectManager`](Docs/SyncObjectManager.md)
 
 ## License
 

@@ -38,24 +38,6 @@ namespace BeardedManStudios
 		public static UpdateEvent unityUpdate = null;
 		public static UpdateEvent unityLateUpdate = null;
 		
-		public static Action repeatedUpdate = null;
-		public static float repeatedUpdateDelay = 0f;
-		
-		public static void RunRepeated(Action action, float delay)
-		{
-			repeatedUpdate = action;
-			repeatedUpdateDelay = Time.time + delay;
-			
-			unityUpdate += () =>
-			{
-				if (Time.time >= repeatedUpdateDelay)
-				{
-					repeatedUpdate?.Invoke();
-					repeatedUpdateDelay = Time.time + delay;
-				}
-			};
-		}
-		
 		public static void RunDelayed(Action action, float delay, UpdateType updateType = UpdateType.Update)
 		{
 			if (delay <= 0f)

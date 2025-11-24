@@ -5,10 +5,10 @@
         [System.Serializable]
         private sealed class Message
         {
-            public string type;
+            public byte type;
             public object data;
             
-            public Message(string type, object data)
+            public Message(byte type, object data)
             {
                 this.type = type;
                 this.data = data;
