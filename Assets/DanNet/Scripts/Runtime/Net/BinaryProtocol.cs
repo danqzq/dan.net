@@ -29,7 +29,7 @@ namespace Dan.Net
             buffer[3] = (byte)((payloadLength >> 16) & 0xFF);
             buffer[4] = (byte)((payloadLength >> 24) & 0xFF);
             
-            Array.Copy(payloadBytes, 0, buffer, 5, payloadLength);
+            Buffer.BlockCopy(payloadBytes, 0, buffer, 5, payloadLength);
             
             return buffer;
         }
@@ -47,7 +47,7 @@ namespace Dan.Net
                 throw new ArgumentException($"Invalid message: too short ({data?.Length ?? 0} bytes, minimum 5 required)");
             }
             
-            var messageType = data[0];
+            var messageType = data[0];    
             var payloadLength = data[1] 
                 | (data[2] << 8) 
                 | (data[3] << 16) 
