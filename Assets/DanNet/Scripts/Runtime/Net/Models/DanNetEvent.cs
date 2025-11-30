@@ -21,12 +21,13 @@ namespace Dan.Net
     }
     
     [System.Serializable]
-    internal struct DanNetEvent
+    internal readonly struct DanNetEvent
     {
-        [JsonProperty] internal string name;
-        [JsonProperty] internal object[] args;
-        [JsonProperty] internal int senderId;
+        [JsonProperty] internal readonly string name;
+        [JsonProperty] internal readonly object[] args;
+        [JsonProperty] internal readonly int senderId;
         
+        [JsonConstructor]
         internal DanNetEvent(string name, object[] args, int senderId)
         {
             this.name = name;
