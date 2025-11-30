@@ -100,19 +100,7 @@ namespace Dan.Net
             const string danNetObjectName = "[DanNet]";
             _danNetEventHandlers = new Dictionary<string, System.Action<SyncObject, DanNetEvent>>();
             
-            var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-            var types = assemblies.SelectMany(assembly => assembly.GetTypes()).ToArray();
-            foreach (var type in types)
-            {
-                foreach (var method in type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-                {
-                    var attr = method.GetCustomAttribute<DanNetEventAttribute>();
-                    if (attr != null)
-                    {
-                        CacheDanNetEvent(method, type);
-                    }
-                }
-            }
+            CacheAllDanNetEvents();
             
             SceneManager.sceneLoaded += OnSceneLoaded;
             
@@ -273,6 +261,7 @@ namespace Dan.Net
                     return;
                 }
                 
+                // If no room with the given name exists, create one.
                 if (rooms.All(r => r.name != roomName))
                 {
                     CreateRoom(roomName, maxPlayers);
@@ -360,11 +349,10 @@ namespace Dan.Net
             var binaryStreamData = BinaryStreamProtocol.EncodeStream(stream.transformData);
             
             // NOTE: serverSentTime is set to 0 here, the server will replace it with actual timestamp
-            var wrapper = new StreamWrapper
-            { 
-                serverSentTime = 0.0,
-                binaryData = System.Convert.ToBase64String(binaryStreamData)
-            };
+            var wrapper = new StreamWrapper(
+                serverSentTime: 0.0, 
+                binaryData: System.Convert.ToBase64String(binaryStreamData)
+            );
             
             SendMessage(new Message(STREAM_EVENT_TYPE, wrapper));
         }
@@ -410,7 +398,7 @@ namespace Dan.Net
         {
             if (_webSocket == null || _webSocket.GetState() != WebSocketState.Open)
             {
-                Debug.LogWarning("WebSocket is not connected. Message not sent.");
+                Logger.Log("WebSocket is not connected. Message not sent.", Logger.LogType.Warning);
                 return;
             }
             _webSocket.Send(data);
@@ -427,7 +415,7 @@ namespace Dan.Net
         private static void OnWebSocketMessage(byte[] data)
         {
             var (messageType, jsonPayload) = BinaryProtocol.Decode(data);
-            Log($"Received: Type=0x{messageType:X2}, Payload={jsonPayload}");
+            Logger.Log($"Received: Type=0x{messageType:X2}, Payload={jsonPayload}", Logger.LogType.Info);
             
             MainThreadManager.Run(() =>
                 HandleMessageUpdate(messageType, jsonPayload), MainThreadManager.UpdateType.Update);
@@ -477,7 +465,30 @@ namespace Dan.Net
 
             handler.Invoke(sender, danNetEvent);
         }
-        
+
+        private static void CacheAllDanNetEvents()
+        {
+            var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+            var types = assemblies.SelectMany(assembly => assembly.GetTypes()).ToArray();
+            foreach (var type in types)
+            {
+                ForDanNetEventsInType(type, method => CacheDanNetEvent(method, type));
+            }
+        }
+
+        private static void ForDanNetEventsInType(System.Type type, System.Action<MethodInfo> action)
+        {
+            var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            foreach (var method in methods)
+            {
+                var attributes = method.GetCustomAttributes(typeof(DanNetEventAttribute), true);
+                if (attributes.Length > 0)
+                {
+                    action.Invoke(method);
+                }
+            }
+        }
+
         private static void CacheDanNetEvent(MethodInfo method, System.Type type)
         {
             var eventName = method.Name;
@@ -493,45 +504,29 @@ namespace Dan.Net
 
                 for (int i = 0; i < parameters.Length; i++)
                 {
-                    ParseParameter(parameters, i, arguments, danNetEvent);
+                    arguments[i] = ParseParameter(parameters[i], danNetEvent.args[i]);
                 }
 
                 method.Invoke(component, arguments);
             };
         }
 
-        private static void ParseParameter(ParameterInfo[] parameters, int i, object[] arguments, DanNetEvent danNetEvent)
+        private static object ParseParameter(ParameterInfo parameter, object argument)
         {
-            // WHOLE NUMBERS
-            if (parameters[i].ParameterType == typeof(int))
-                arguments[i] = (int) (long) danNetEvent.args[i];
-            else if (parameters[i].ParameterType == typeof(short))
-                arguments[i] = (short) (long) danNetEvent.args[i];
-            else if (parameters[i].ParameterType == typeof(byte))
-                arguments[i] = (byte) (long) danNetEvent.args[i];
-            else if (parameters[i].ParameterType == typeof(long))
-                arguments[i] = (long) danNetEvent.args[i];
-                   
-            // DECIMAL NUMBERS
-            else if (parameters[i].ParameterType == typeof(decimal))
-                arguments[i] = (decimal) (double) danNetEvent.args[i];
-            else if (parameters[i].ParameterType == typeof(float))
-                arguments[i] = (float) (double) danNetEvent.args[i];
-            else if (parameters[i].ParameterType == typeof(double))
-                arguments[i] = (double) danNetEvent.args[i];
-                    
-            // BOOL
-            else if (parameters[i].ParameterType == typeof(bool))
-                arguments[i] = (bool) danNetEvent.args[i];
-                    
-            // CHAR & STRING
-            else if (parameters[i].ParameterType == typeof(char))
-                arguments[i] = char.Parse((string) danNetEvent.args[i]);
-            else if (parameters[i].ParameterType == typeof(string))
-                arguments[i] = (string) danNetEvent.args[i];
-                    
-            else
-                throw new System.Exception("Unsupported parameter type!");
+            return System.Type.GetTypeCode(parameter.ParameterType) switch
+            {
+                System.TypeCode.Int32   => (int)(long)argument,
+                System.TypeCode.Int16   => (short)(long)argument,
+                System.TypeCode.Byte    => (byte)(long)argument,
+                System.TypeCode.Int64   => (long)argument,
+                System.TypeCode.Decimal => (decimal)(double)argument,
+                System.TypeCode.Single  => (float)(double)argument,
+                System.TypeCode.Double  => (double)argument,
+                System.TypeCode.Boolean => (bool)argument,
+                System.TypeCode.Char    => char.Parse((string)argument),
+                System.TypeCode.String  => (string)argument,
+                _ => throw new System.Exception($"Unsupported parameter type: {parameter.ParameterType.Name}")
+            };
         }
 
         private static void OnSyncObjectsMessage(string data)
@@ -558,16 +553,6 @@ namespace Dan.Net
             }
         }
 
-        [System.Serializable]
-        private class StreamWrapper
-        {
-            [JsonProperty("serverSentTime")]
-            public double serverSentTime;
-            
-            [JsonProperty("binaryData")]
-            public string binaryData;
-        }
-
         private static void OnStreamMessage(string data)
         {
             var wrapper = JsonConvert.DeserializeObject<StreamWrapper>(data);
@@ -584,12 +569,12 @@ namespace Dan.Net
                 StreamManager.ReceiveStream(stream);
             }
             
-            var unixNano = (System.DateTime.UtcNow - new System.DateTime(1970, 1, 1)).TotalMilliseconds;
+            var currentUnixTime = (System.DateTime.UtcNow - new System.DateTime(1970, 1, 1)).TotalMilliseconds;
             SendMessage(new Message(PING_EVENT_TYPE, new LatencyResponse
-            {
-                serverTime = stream.serverSentTime,
-                clientTime = unixNano
-            }));
+            (
+                serverTime: stream.serverSentTime,
+                clientTime: currentUnixTime
+            )));
         }
         
         private static void OnInstantiateMessage(string data)
@@ -642,16 +627,6 @@ namespace Dan.Net
         {
             using var reader = new JsonTextReader(new System.IO.StringReader(data));
             return _jsonSerializer.Deserialize<T>(reader);
-        }
-
-        private static void Log(string message)
-        {
-#if DEBUG
-            if (IsLoggingEnabled)
-            {
-                Debug.Log(message);
-            }
-#endif
         }
         
         #endregion
