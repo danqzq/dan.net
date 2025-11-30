@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -15,7 +16,7 @@ namespace Dan.Net
         public bool hasCustomData;
         public Vector3 position;
         public Quaternion rotation;
-        public byte[] customData;
+        public byte[][] customDataArray;
     }
     
     /// <summary>
@@ -50,9 +51,18 @@ namespace Dan.Net
                 writer.Write(objectId);
 
                 byte flags = 0;
-                if (data.hasPosition) flags |= FLAG_HAS_POSITION;
-                if (data.hasRotation) flags |= FLAG_HAS_ROTATION;
-                if (data.hasCustomData) flags |= FLAG_HAS_CUSTOM_DATA;
+                if (data.hasPosition)
+                {
+                    flags |= FLAG_HAS_POSITION;
+                }
+                if (data.hasRotation)
+                {
+                    flags |= FLAG_HAS_ROTATION;
+                }
+                if (data.hasCustomData)
+                {
+                    flags |= FLAG_HAS_CUSTOM_DATA;
+                }
                 writer.Write(flags);
 
                 if (data.hasPosition)
@@ -64,14 +74,33 @@ namespace Dan.Net
 
                 if (data.hasRotation)
                 {
-                    var compressed = CompressQuaternion(data.rotation);
-                    writer.Write(compressed);
+                    var compressed = ArrayPool<byte>.Shared.Rent(7);
+                    try
+                    {
+                        CompressQuaternion(data.rotation, compressed.AsSpan(0, 7));
+                        writer.Write(compressed, 0, 7);
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(compressed);
+                    }
                 }
 
-                if (data.hasCustomData && data.customData != null)
+                if (data.hasCustomData && data.customDataArray != null)
                 {
-                    writer.Write((ushort)data.customData.Length);
-                    writer.Write(data.customData);
+                    writer.Write((ushort)data.customDataArray.Length);
+                    foreach (var chunk in data.customDataArray)
+                    {
+                        if (chunk != null)
+                        {
+                            writer.Write((ushort)chunk.Length);
+                            writer.Write(chunk);
+                        }
+                        else
+                        {
+                            writer.Write((ushort)0);
+                        }
+                    }
                 }
             }
 
@@ -121,14 +150,27 @@ namespace Dan.Net
                     
                     if (hasRotation)
                     {
-                        var compressed = reader.ReadBytes(7);
-                        transformData.rotation = DecompressQuaternion(compressed);
+                        var compressed = ArrayPool<byte>.Shared.Rent(7);
+                        try
+                        {
+                            reader.Read(compressed, 0, 7);
+                            transformData.rotation = DecompressQuaternion(compressed.AsSpan(0, 7));
+                        }
+                        finally
+                        {
+                            ArrayPool<byte>.Shared.Return(compressed);
+                        }
                     }
                     
                     if (hasCustomData)
                     {
-                        var customDataLength = reader.ReadUInt16();
-                        transformData.customData = reader.ReadBytes(customDataLength);
+                        var chunkCount = reader.ReadUInt16();
+                        transformData.customDataArray = new byte[chunkCount][];
+                        for (int j = 0; j < chunkCount; j++)
+                        {
+                            var chunkLength = reader.ReadUInt16();
+                            transformData.customDataArray[j] = chunkLength > 0 ? reader.ReadBytes(chunkLength) : null;
+                        }
                     }
                     
                     result[objectId] = transformData;
@@ -142,11 +184,11 @@ namespace Dan.Net
         /// Compresses a quaternion using smallest-three method
         /// Format: 1 byte (largest index) + 3 shorts (other components)
         /// </summary>
-        private static byte[] CompressQuaternion(Quaternion q)
+        private static void CompressQuaternion(Quaternion q, Span<byte> buffer)
         {
             q = Quaternion.Normalize(q);
             
-            var components = new[] { q.x, q.y, q.z, q.w };
+            Span<float> components = stackalloc float[4] { q.x, q.y, q.z, q.w };
             var largestIndex = 0;
             var largestValue = Mathf.Abs(components[0]);
             
@@ -162,8 +204,7 @@ namespace Dan.Net
             
             var sign = components[largestIndex] < 0 ? -1f : 1f;
             
-            var result = new byte[7];
-            result[0] = (byte)largestIndex;
+            buffer[0] = (byte)largestIndex;
             
             var writeIndex = 1;
             for (int i = 0; i < 4; i++)
@@ -173,17 +214,15 @@ namespace Dan.Net
                 var value = components[i] * sign;
                 var compressed = (short)(value * short.MaxValue);
                 
-                result[writeIndex++] = (byte)(compressed & 0xFF);
-                result[writeIndex++] = (byte)((compressed >> 8) & 0xFF);
+                buffer[writeIndex++] = (byte)(compressed & 0xFF);
+                buffer[writeIndex++] = (byte)((compressed >> 8) & 0xFF);
             }
-            
-            return result;
         }
         
         /// <summary>
         /// Decompresses a quaternion from smallest-three format
         /// </summary>
-        private static Quaternion DecompressQuaternion(byte[] data)
+        private static Quaternion DecompressQuaternion(Span<byte> data)
         {
             if (data.Length != 7)
             {
@@ -191,7 +230,7 @@ namespace Dan.Net
             }
             
             var largestIndex = data[0];
-            var components = new float[4];
+            Span<float> components = stackalloc float[4];
             
             var readIndex = 1;
             for (int i = 0; i < 4; i++)
@@ -204,9 +243,9 @@ namespace Dan.Net
             }
             
             var sumSquares = components[0] * components[0] +
-                             components[1] * components[1] +
-                             components[2] * components[2] +
-                             components[3] * components[3];
+                           components[1] * components[1] +
+                           components[2] * components[2] +
+                           components[3] * components[3];
             
             components[largestIndex] = Mathf.Sqrt(Mathf.Max(0, 1f - sumSquares));
             
