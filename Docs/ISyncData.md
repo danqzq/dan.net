@@ -23,4 +23,29 @@ This method is called when it's time to send synchronized data to the network. U
 
 ## Usage Example
 
-See [`TransformSync`](TransformSync.md) for a complete implementation example of this interface.
+```cs
+[RequireComponent(typeof(SyncObject))]
+public class HealthSyncComponent : MonoBehaviourDanNet, ISyncData
+{
+    [SerializeField] private int _health;
+    
+    // This is executed when synchronized data is received
+    public void OnDataRead(in SyncDataStream stream)
+    {
+        var data = this.Receive(in stream, syncObject);
+        if (data != null && data.Length >= 4) // int requires 4 bytes
+        {
+            _health = System.BitConverter.ToInt32(data, 0);
+        }
+    }
+    
+    // This is executed when synchronized data is to be sent
+    public void OnDataSend(in SyncDataStream stream)
+    {
+        var data = System.BitConverter.GetBytes(_health);
+        this.Send(in stream, data, syncObject);
+    }
+}
+```
+
+For more implementation details, see [`TransformSync`](TransformSync.md) for a complete implementation example of this interface.
