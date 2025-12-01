@@ -21,13 +21,21 @@ Try out the example for yourself [here](https://www.danqzq.games)
 
 ## Dependencies
 
-- Make sure to add **Newtonsoft Json** as a dependency into your Unity project: `com.unity.nuget.newtonsoft-json` (Add via git URL in Package Manager).
+- If importing manually, add **Newtonsoft Json** as a dependency into your Unity project: `com.unity.nuget.newtonsoft-json` (Add via git URL in Package Manager).
 - `Dan.Net` uses the **Hybrid WebSocket** for WebSocket implementation by `jirihybek`: https://github.com/jirihybek/unity-websocket-webgl
 - `Dan.Net` also uses a modified version of the **Main Thread Manager** by `Bearded Man Studios, Inc. (Forge Networking)`.
 
 ## Installation
 
-To install `Dan.Net`, simply download the latest release from the [Releases page](https://github.com/danqzq/dan.net/releases)
+To install `Dan.Net` into your Unity project, you can either:
+
+Add the following git URL to your Unity project via Package Manager (RECOMMENDED):
+
+```
+https://github.com/danqzq/dan.net.git?path=Assets/DanNet
+```
+
+Or simply download the latest release from the [Releases page](https://github.com/danqzq/dan.net/releases)
 
 ## Usage
 
