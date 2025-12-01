@@ -3,7 +3,7 @@
 `Dan.Net` is a simple online multiplayer networking solution running on WebSockets, designed for Unity games. Its structure
 is inspired by the popular `Photon Unity Networking (PUN)` package.
 
-Latest Version: v1.1
+Latest Version: v1.2
 
 ---
 
