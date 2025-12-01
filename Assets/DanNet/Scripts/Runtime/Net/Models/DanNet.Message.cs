@@ -2,6 +2,9 @@
 {
     public static partial class DanNet
     {
+        /// <summary>
+        /// A message sent or received over the network.
+        /// </summary>
         [System.Serializable]
         private sealed class Message
         {

@@ -1,11 +1,23 @@
-﻿namespace Dan.Net
+﻿using Newtonsoft.Json;
+
+namespace Dan.Net
 {
     public static partial class DanNet
     {
+        /// <summary>
+        /// The response received when a player leaves a room.
+        /// </summary>
         [System.Serializable]
-        private struct LeftRoomResponse
+        public readonly struct LeftRoomResponse
         {
-            public string playerId;
+            [JsonProperty("playerId")]
+            public readonly string playerId;
+
+            [JsonConstructor]
+            public LeftRoomResponse(string playerId)
+            {
+                this.playerId = playerId;
+            }
         }
     }
 }

@@ -1,13 +1,18 @@
-﻿namespace Dan.Net
+﻿using Newtonsoft.Json;
+
+namespace Dan.Net
 {
     public static partial class DanNet
     {
         [System.Serializable]
-        private struct SyncObjectData
+        private readonly struct SyncObjectData
         {
-            public int id;
-            public string creatorId;
+            [JsonProperty("id")]
+            public readonly int id;
+            [JsonProperty("creatorId")]
+            public readonly string creatorId;
             
+            [JsonConstructor]
             public SyncObjectData(int id, string creatorId)
             {
                 this.id = id;

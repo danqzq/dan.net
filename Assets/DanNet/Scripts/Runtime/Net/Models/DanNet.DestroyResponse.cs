@@ -1,13 +1,26 @@
-﻿namespace Dan.Net
+﻿using Newtonsoft.Json;
+
+namespace Dan.Net
 {
     public static partial class DanNet
     {
+        /// <summary>
+        /// The response received when destroying a SyncObject.
+        /// </summary>
         [System.Serializable]
-        private struct DestroyResponse
+        private readonly struct DestroyResponse
         {
-            public int id;
+            /// <summary>
+            /// The ID of the destroyed SyncObject.
+            /// </summary>
+            [JsonProperty("id")]
+            public readonly int id;
             
-            public DestroyResponse(int id) => this.id = id;
+            [JsonConstructor]
+            public DestroyResponse(int id)
+            {
+                this.id = id;
+            }
         }
     }
 }
