@@ -11,10 +11,13 @@ namespace Dan.Net
         /// <summary>
         /// The SyncObject component attached to the game object. This component is used to send and receive network events.
         /// </summary>
-        [HideInInspector] public SyncObject syncObject;
+        public SyncObject syncObject { get; private set; }
         
-        protected virtual void Awake() => syncObject = GetComponent<SyncObject>();
-
+        protected virtual void Awake()
+        {
+            syncObject = GetComponent<SyncObject>();
+        }
+#if UNITY_EDITOR
         protected virtual void OnValidate()
         {
             if (GetComponent<SyncObject>() == null)
@@ -22,5 +25,6 @@ namespace Dan.Net
                 Logger.Log("SyncObject component is missing on " + gameObject.name, Logger.LogType.Error);
             }
         }
+#endif
     }
 }
