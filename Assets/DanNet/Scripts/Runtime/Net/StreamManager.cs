@@ -28,7 +28,8 @@ namespace Dan.Net
                 }
                 
                 stream.ViewingId = syncObject.ID;
-                if (syncObject.TryGetComponent<ISyncData>(out var syncData))
+                var syncDataComponents = syncObject.GetSyncDataComponents();
+                foreach (var syncData in syncDataComponents)
                 {
                     syncData.OnDataRead(in stream);
                 }
@@ -42,7 +43,8 @@ namespace Dan.Net
             foreach (var syncObject in SyncObjectManager.GetMySyncObjects())
             {
                 stream.SendingId = syncObject.ID;
-                if (syncObject.TryGetComponent<ISyncData>(out var syncData)) 
+                var syncDataComponents = syncObject.GetSyncDataComponents();
+                foreach (var syncData in syncDataComponents)
                 {
                     syncData.OnDataSend(in stream);
                 }

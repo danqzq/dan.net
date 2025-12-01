@@ -36,7 +36,10 @@ namespace Dan.Net
         internal static void AddSyncObject(SyncObject syncObject)
         {
             if (_syncObjectDictionary.ContainsValue(syncObject))
+            {
                 return;
+            }
+            
             _syncObjectDictionary[syncObject.ID] = syncObject;
         }
         

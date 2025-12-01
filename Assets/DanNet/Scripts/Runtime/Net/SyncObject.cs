@@ -15,11 +15,42 @@ namespace Dan.Net
         /// Returns true if the object belongs to the local player.
         /// </summary>
         public bool IsMine => DanNet.PlayerID == creatorID;
+        
+        /// <summary>
+        /// Cached ISyncData components with their assigned indices
+        /// </summary>
+        private ISyncData[] _syncDataComponents;
+        
+        /// <summary>
+        /// Gets the ISyncData components on this object, caching them on first access
+        /// </summary>
+        public ISyncData[] GetSyncDataComponents()
+        {
+            _syncDataComponents ??= GetComponents<ISyncData>();
+            return _syncDataComponents;
+        }
+        
+        /// <summary>
+        /// Gets the index of a specific ISyncData component
+        /// </summary>
+        public int GetSyncDataIndex(ISyncData syncData)
+        {
+            var components = GetSyncDataComponents();
+            for (int i = 0; i < components.Length; i++)
+            {
+                if (components[i] == syncData)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
 
         internal void Init(int id, string creatorId)
         {
             ID = id;
             creatorID = creatorId;
+            _syncDataComponents = null; // Reset cache
             
             SyncObjectManager.AddSyncObject(this);
         }
@@ -43,7 +74,7 @@ namespace Dan.Net
             OnValidate();
             if (FindObjectsByType<SyncObject>(FindObjectsSortMode.None).Any(x => x.ID == ID && x != this))
             {
-                Debug.LogError($"Duplicate ID {ID} on {name}");
+                Logger.Log($"Duplicate ID {ID} on {name}", Logger.LogType.Warning);
             }
         }
 
@@ -63,7 +94,9 @@ namespace Dan.Net
             for (int i = 1; i < all.Length; i++)
             {
                 if (all.Any(x => x.ID == i))
+                {
                     continue;
+                }
                 ID = i;
             }
         }

@@ -26,14 +26,13 @@ namespace Dan.Net
         /// <summary>
         /// Sends transform data for the current object
         /// </summary>
-        public void SendTransform(Vector3? position, Quaternion? rotation)
+        internal void SendTransform(Vector3? position, Quaternion? rotation)
         {
-            if (!transformData.ContainsKey(SendingId))
+            if (!transformData.TryGetValue(SendingId, out var data))
             {
-                transformData[SendingId] = new TransformData();
+                data = new TransformData();
             }
             
-            var data = transformData[SendingId];
             data.hasPosition = position.HasValue;
             data.hasRotation = rotation.HasValue;
             data.position = position ?? Vector3.zero;
@@ -42,25 +41,36 @@ namespace Dan.Net
         }
         
         /// <summary>
-        /// Sends custom data for the current object
+        /// Sends custom data for the current object at a specific component index
         /// </summary>
-        public void Send(byte[] customData)
+        internal void Send(byte[] customData, int componentIndex)
         {
-            if (!transformData.ContainsKey(SendingId))
+            if (!transformData.TryGetValue(SendingId, out var data))
             {
-                transformData[SendingId] = new TransformData();
+                data = new TransformData();
             }
             
-            var data = transformData[SendingId];
             data.hasCustomData = true;
-            data.customData = customData;
+            
+            // Initialize or expand the array if needed
+            if (data.customDataArray == null)
+            {
+                data.customDataArray = new byte[componentIndex + 1][];
+            }
+            else if (data.customDataArray.Length <= componentIndex)
+            {
+                // Use Array.Resize for slightly better performance
+                System.Array.Resize(ref data.customDataArray, componentIndex + 1);
+            }
+            
+            data.customDataArray[componentIndex] = customData;
             transformData[SendingId] = data;
         }
         
         /// <summary>
         /// Receives transform data for the viewing object
         /// </summary>
-        public TransformData ReceiveTransform()
+        internal TransformData ReceiveTransform()
         {
             if (transformData.TryGetValue(ViewingId, out var data))
             {
@@ -70,13 +80,16 @@ namespace Dan.Net
         }
         
         /// <summary>
-        /// Receives custom data for the viewing object
+        /// Receives custom data for the viewing object at a specific component index
         /// </summary>
-        public byte[] Receive()
+        internal byte[] Receive(int componentIndex)
         {
-            if (transformData.TryGetValue(ViewingId, out var data) && data.hasCustomData)
+            if (transformData.TryGetValue(ViewingId, out var data) && 
+                data.hasCustomData && 
+                data.customDataArray != null && 
+                componentIndex < data.customDataArray.Length)
             {
-                return data.customData;
+                return data.customDataArray[componentIndex];
             }
             return null;
         }
