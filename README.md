@@ -39,7 +39,7 @@ Or simply download the latest release from the [Releases page](https://github.co
 
 ## Usage
 
-For `Dan.Net` to work, you need to have a server running the `Dan.Net` server software. You can find the server software in the [Dan.Net Server Download Link](https://www.danqzq.games/dan-net-server.exe) or the [Releases page](https://github.com/danqzq/dan.net/releases).
+For `Dan.Net` to work, you need to have a server running the `Dan.Net` server software. You can find the server software in the [Releases page](https://github.com/danqzq/dan.net/releases) available for download on Windows, macOS and Linux.
 The server listens on port '3000'.
 The performance of `Dan.Net` is dependent on the performance of the server, so make sure to scale your server according to your needs.
 
