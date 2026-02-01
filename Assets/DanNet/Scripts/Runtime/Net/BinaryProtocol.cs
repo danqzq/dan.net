@@ -42,15 +42,15 @@ namespace Dan.Net
         /// <exception cref="ArgumentException">Thrown when data is invalid</exception>
         public static (byte messageType, string jsonPayload) Decode(byte[] data)
         {
-            if (data == null || data.Length < 5)
+            if (data.Length < 5)
             {
-                throw new ArgumentException($"Invalid message: too short ({data?.Length ?? 0} bytes, minimum 5 required)");
+                throw new ArgumentException($"Invalid message: too short ({data.Length} bytes, minimum 5 required)");
             }
             
-            var messageType = data[0];    
-            var payloadLength = data[1] 
-                | (data[2] << 8) 
-                | (data[3] << 16) 
+            var messageType = data[0];
+            var payloadLength = data[1]
+                | (data[2] << 8)
+                | (data[3] << 16)
                 | (data[4] << 24);
             
             if (data.Length < 5 + payloadLength)

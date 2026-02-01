@@ -68,6 +68,12 @@ namespace Dan.Net
         public static string RandomPlayerNamePrefix { get; set; } = "Player_";
 
         internal static string PlayerID { get; private set; }
+
+        public enum StatusCode : byte
+        {
+            Success,
+            Failed
+        }
         
         private static WebSocket _webSocket;
         private static JsonSerializer _jsonSerializer = new JsonSerializer
@@ -118,10 +124,20 @@ namespace Dan.Net
         /// <summary>
         /// Connects to the DanNet server.
         /// </summary>
-        /// <param name="username">The player's username (optional).</param>
-        public static void Connect(string username = null)
+        /// <param name="callback">Optional callback invoked upon completion. Returns status code indicating success or failure.</param>
+        public static void Connect(System.Action<StatusCode> callback = null)
         {
-            username ??= $"{RandomPlayerNamePrefix}{Random.Range(0, 10000):0000}";
+            string username = $"{RandomPlayerNamePrefix}{Random.Range(0, 10000):0000}";
+            Connect(username, callback);
+        }
+
+        /// <summary>
+        /// Connects to the DanNet server.
+        /// </summary>
+        /// <param name="username">The player's username (optional).</param>
+        /// <param name="callback">Optional callback invoked upon completion. Returns status code indicating success or failure.</param>
+        public static void Connect(string username, System.Action<StatusCode> callback = null)
+        {
             var request = UnityWebRequest.Post(GetServerUrl(Route.Connect), new List<IMultipartFormSection>
             {
                 new MultipartFormDataSection(ROUTE_CONNECT_NAME, username),
@@ -131,11 +147,13 @@ namespace Dan.Net
                 if (!isSuccessful)
                 {
                     Logger.Log("Error while trying to connect!", Logger.LogType.Error);
+                    callback?.Invoke(StatusCode.Failed);
                     return;
                 }
                 var response = Deserialize<ConnectResponse>(request.downloadHandler.text);
                 PlayerID = response.playerId;
                 OnConnected?.Invoke();
+                callback?.Invoke(StatusCode.Success);
             });
         }
         
@@ -143,44 +161,69 @@ namespace Dan.Net
         /// Spawns a prefab in the network.
         /// </summary>
         /// <param name="prefabName">The prefab's name in the Resources folder.</param>
-        /// <param name="position"></param>
-        /// <param name="rotation"></param>
-        public static void Instantiate(string prefabName, Vector3 position, Quaternion rotation)
+        /// <param name="position">The starter position of the spawned prefab.</param>
+        /// <param name="rotation">The starter rotation of the spawned prefab.</param>
+        /// <param name="callback">
+        ///     Optional callback invoked upon completion. Returns status code indicating success or failure.
+        ///     NOTE: Success does not guarantee instantiation, only that the request was sent.
+        /// </param>
+        public static void Instantiate(string prefabName, Vector3 position, Quaternion rotation, System.Action<StatusCode> callback = null)
         {
             if (string.IsNullOrEmpty(prefabName) || !_prefabCache.ContainsKey(prefabName))
             {
                 Logger.Log("Sync object prefab not found!", Logger.LogType.Error);
+                callback?.Invoke(StatusCode.Failed);
                 return;
             }
 
             SendMessage(new Message(INSTANTIATE_EVENT_TYPE, new InstantiationResponse(prefabName, position, rotation)));
+            callback?.Invoke(StatusCode.Success);
         }
         
         /// <summary>
         /// Destroy a network prefab.
         /// </summary>
         /// <param name="gameObject">The network object (must have the SyncObject component).</param>
-        public static void Destroy(GameObject gameObject)
+        /// <param name="callback">
+        ///     Optional callback invoked upon completion. Returns status code indicating success or failure.
+        ///     NOTE: Success does not guarantee destruction, only that the request was sent.
+        /// </param>
+        public static void Destroy(GameObject gameObject, System.Action<StatusCode> callback = null)
         {
             if (!gameObject.TryGetComponent<SyncObject>(out var syncObject))
             {
                 Logger.Log("Prefab does not have a SyncObject component!", Logger.LogType.Error);
+                callback?.Invoke(StatusCode.Failed);
                 return;
             }
 
             SendMessage(new Message(DESTROY_EVENT_TYPE, new DestroyResponse(syncObject.ID)));
+            callback?.Invoke(StatusCode.Success);
         }
 
-        /// <summary>
+         /// <summary>
         /// Creates a room in the DanNet server.
         /// </summary>
         /// <param name="roomName">Name of the room to be created.</param>
+        /// <param name="callback">Optional callback invoked upon completion. Returns status code indicating success or failure.</param>
+        public static void CreateRoom(string roomName, System.Action<StatusCode> callback = null)
+        {
+            const int defaultMaxPlayers = 2;
+            CreateRoom(roomName, defaultMaxPlayers, callback);
+        }
+
+        /// <summary>
+        /// Creates a room in the DanNet server with a specified max player count.
+        /// </summary>
+        /// <param name="roomName">Name of the room to be created.</param>
         /// <param name="maxPlayers">Max player count (defaulted to 2).</param>
-        public static void CreateRoom(string roomName, int maxPlayers = 2)
+        /// <param name="callback">Optional callback invoked upon completion. Returns status code indicating success or failure.</param>
+        public static void CreateRoom(string roomName, int maxPlayers = 2, System.Action<StatusCode> callback = null)
         {
             if (string.IsNullOrEmpty(PlayerID))
             {
                 Logger.Log("You must connect to the DanNet server before creating a room!", Logger.LogType.Error);
+                callback?.Invoke(StatusCode.Failed);
                 return;
             }
             var request = UnityWebRequest.Post(GetServerUrl(Route.CreateRoom), new List<IMultipartFormSection>
@@ -194,11 +237,13 @@ namespace Dan.Net
                 if (!isSuccessful)
                 {
                     Logger.Log("Error while trying to create room!", Logger.LogType.Error);
+                    callback?.Invoke(StatusCode.Failed);
                     return;
                 }
                 
                 CurrentRoom = Deserialize<Room>(request.downloadHandler.text);
                 OnRoomCreated?.Invoke(CurrentRoom);
+                callback?.Invoke(StatusCode.Success);
             });
         }
         
@@ -206,11 +251,13 @@ namespace Dan.Net
         /// Joins the player to a room with a given name in the DanNet server.
         /// </summary>
         /// <param name="roomName">Name of the room to be joined into.</param>
-        public static void JoinRoom(string roomName)
+        /// <param name="callback">Optional callback invoked upon completion. Returns status code indicating success or failure.</param>
+        public static void JoinRoom(string roomName, System.Action<StatusCode> callback = null)
         {
             if (string.IsNullOrEmpty(PlayerID))
             {
                 Logger.Log("You must connect to the DanNet server before joining a room!", Logger.LogType.Error);
+                callback?.Invoke(StatusCode.Failed);
                 return;
             }
 
@@ -237,6 +284,7 @@ namespace Dan.Net
                 };
 
                 _webSocket.Connect();
+                callback?.Invoke(StatusCode.Success);
             }
         }
         
@@ -245,30 +293,25 @@ namespace Dan.Net
         /// </summary>
         /// <param name="roomName">Name of the room to create or join into (if it exists).</param>
         /// <param name="maxPlayers">The max player count in the room (min. 2) (default: 2).</param>
-        public static void CreateOrJoinRoom(string roomName, int maxPlayers = 2)
+        /// <param name="callback">Optional callback invoked upon completion. Returns status code indicating success or failure.</param>
+        public static void CreateOrJoinRoom(string roomName, int maxPlayers, System.Action<StatusCode> callback = null)
         {
             if (string.IsNullOrEmpty(PlayerID))
             {
                 Logger.Log("You must connect to the DanNet server before creating a room!", Logger.LogType.Error);
+                callback?.Invoke(StatusCode.Failed);
                 return;
             }
             
             GetRoomList(rooms =>
             {
-                if (rooms == null || rooms.Count == 0)
+                if (rooms == null || rooms.Count == 0 || rooms.All(r => r.name != roomName))
                 {
-                    CreateRoom(roomName, maxPlayers);
+                    CreateRoom(roomName, maxPlayers, callback);
                     return;
                 }
-                
-                // If no room with the given name exists, create one.
-                if (rooms.All(r => r.name != roomName))
-                {
-                    CreateRoom(roomName, maxPlayers);
-                    return;
-                }
-                
-                JoinRoom(roomName);
+
+                JoinRoom(roomName, callback);
             });
         }
         
@@ -302,15 +345,20 @@ namespace Dan.Net
         /// <summary>
         /// Leaves the room the player is currently in.
         /// </summary>
-        public static void LeaveRoom()
+        /// <param name="callback">Optional callback invoked upon completion. Returns status code indicating success or failure.</param>
+        public static void LeaveRoom(System.Action<StatusCode> callback = null)
         {
             if (CurrentRoom is null)
             {
                 Logger.Log("Attempted to leave a room when not in one!", Logger.LogType.Error);
+                callback?.Invoke(StatusCode.Failed);
                 return;
             }
+
             _webSocket?.Close();
             CurrentRoom = null;
+
+            callback?.Invoke(StatusCode.Success);
         }
 
         /// <summary>
@@ -414,6 +462,12 @@ namespace Dan.Net
         [ExternalThreadEvent]
         private static void OnWebSocketMessage(byte[] data)
         {
+            if (data == null || data.Length == 0)
+            {
+                Logger.Log("Received empty WebSocket message!", Logger.LogType.Warning);
+                return;
+            }
+
             var (messageType, jsonPayload) = BinaryProtocol.Decode(data);
             Logger.Log($"Received: Type=0x{messageType:X2}, Payload={jsonPayload}", Logger.LogType.Info);
             

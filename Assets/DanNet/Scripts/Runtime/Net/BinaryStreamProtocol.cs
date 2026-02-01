@@ -27,6 +27,21 @@ namespace Dan.Net
         private const byte FLAG_HAS_POSITION = 0x01;
         private const byte FLAG_HAS_ROTATION = 0x02;
         private const byte FLAG_HAS_CUSTOM_DATA = 0x04;
+
+        private static void WriteVector3(BinaryWriter writer, Vector3 v)
+        {
+#if NET5_0_OR_GREATER
+            Span<byte> buffer = stackalloc byte[12];
+            BitConverter.TryWriteBytes(buffer.Slice(0, 4), v.x);
+            BitConverter.TryWriteBytes(buffer.Slice(4, 4), v.y);
+            BitConverter.TryWriteBytes(buffer.Slice(8, 4), v.z);
+            writer.Write(buffer);
+#else
+            writer.Write(v.x);
+            writer.Write(v.y);
+            writer.Write(v.z);
+#endif
+        }
         
         /// <summary>
         /// Encodes transform data into binary format
@@ -67,9 +82,7 @@ namespace Dan.Net
 
                 if (data.hasPosition)
                 {
-                    writer.Write(data.position.x);
-                    writer.Write(data.position.y);
-                    writer.Write(data.position.z);
+                    WriteVector3(writer, data.position);
                 }
 
                 if (data.hasRotation)
